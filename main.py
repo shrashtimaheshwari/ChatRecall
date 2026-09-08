@@ -27,6 +27,14 @@ class SearchResult(BaseModel):
     match: Message
     context: List[ContextMessage]
 
+class SearchMetrics(BaseModel):
+    time_taken_ms: float
+    expanded_query: str
+
+class SearchResponse(BaseModel):
+    results: List[SearchResult]
+    metrics: SearchMetrics
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
@@ -39,11 +47,11 @@ def health_check():
 
 import search as search_module
 
-@app.post("/search", response_model=List[SearchResult])
+@app.post("/search", response_model=SearchResponse)
 def search(query: SearchQuery):
     engine = search_module.get_engine()
     
-    raw_results = engine.search(
+    response_data = engine.search(
         query=query.query,
         mode=query.mode,
         sender=query.sender,
@@ -52,6 +60,9 @@ def search(query: SearchQuery):
         top_k=15,
         context_n=query.context_n
     )
+    
+    raw_results = response_data["results"]
+    metrics = response_data["metrics"]
     
     formatted_results = []
     for r in raw_results:
@@ -77,4 +88,7 @@ def search(query: SearchQuery):
             context=ctx_list
         ))
         
-    return formatted_results
+    return SearchResponse(
+        results=formatted_results,
+        metrics=SearchMetrics(**metrics)
+    )

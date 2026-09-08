@@ -257,6 +257,60 @@
             display: none;
             animation: fadeIn 0.4s ease forwards;
         }
+
+        .metrics-panel {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid var(--surface-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            display: none;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .metrics-panel.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .metrics-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--surface-border);
+            padding-bottom: 0.5rem;
+        }
+
+        .metrics-content strong {
+            color: var(--text-main);
+        }
+
+        .toggle-metrics-btn {
+            background: none;
+            border: 1px solid var(--surface-border);
+            color: var(--text-muted);
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 1.5rem;
+            display: none;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+        
+        .toggle-metrics-btn:hover {
+            color: var(--text-main);
+            border-color: var(--primary-color);
+            background: rgba(255, 51, 102, 0.05);
+        }
     </style>
 </head>
 <body>
@@ -309,6 +363,19 @@
 
     <div id="loading" class="loading">Searching knowledge base...</div>
     <div id="results-count" class="results-count"></div>
+    
+    <div style="text-align: center;">
+        <button id="toggle-metrics-btn" class="toggle-metrics-btn" onclick="toggleMetrics()">📊 Show Performance Metrics</button>
+    </div>
+    <div id="metrics-panel" class="metrics-panel">
+        <div class="metrics-header">Search Performance & HyDE Inspection</div>
+        <div class="metrics-content">
+            <p style="margin-top: 0;">⏱️ Time Taken to Retrieve & Format: <strong id="metric-time"></strong> seconds</p>
+            <p style="margin-bottom: 0.5rem;">🧠 Expanded Keywords generated:</p>
+            <div style="background: rgba(0,0,0,0.5); padding: 1rem; border-radius: 8px; border: 1px solid var(--surface-border); line-height: 1.5; color: var(--text-main);" id="metric-query"></div>
+        </div>
+    </div>
+
     <div id="results"></div>
 </div>
 
@@ -340,6 +407,17 @@
         if (!datetimeLocalVal) return null;
         // datetime-local gives "YYYY-MM-DDTHH:mm". We append ":00Z" to make it look like UTC ISO8601
         return datetimeLocalVal + ":00Z";
+    }
+
+    function toggleMetrics() {
+        const panel = document.getElementById('metrics-panel');
+        if (panel.classList.contains('show')) {
+            panel.classList.remove('show');
+            document.getElementById('toggle-metrics-btn').textContent = '📊 Show Performance Metrics';
+        } else {
+            panel.classList.add('show');
+            document.getElementById('toggle-metrics-btn').textContent = '📊 Hide Performance Metrics';
+        }
     }
 
     async function doSearch() {
@@ -384,19 +462,32 @@
             }
 
             const data = await res.json();
+            const results = data.results;
+            const metrics = data.metrics;
+            
             loadingDiv.classList.remove('show');
             const resultsCount = document.getElementById('results-count');
+            const toggleBtn = document.getElementById('toggle-metrics-btn');
+            const metricsPanel = document.getElementById('metrics-panel');
             
-            if (data.length === 0) {
+            toggleBtn.style.display = 'none';
+            metricsPanel.classList.remove('show');
+            toggleBtn.textContent = '📊 Show Performance Metrics';
+            
+            if (results.length === 0) {
                 resultsCount.style.display = 'none';
                 resultsDiv.innerHTML = '<div style="text-align: center; color: var(--text-muted)">No results found.</div>';
                 return;
             }
 
-            resultsCount.textContent = `✨ The ${data.length} most relevant messages found ✨`;
+            resultsCount.textContent = `✨ The ${results.length} most relevant messages found ✨`;
             resultsCount.style.display = 'block';
+            
+            document.getElementById('metric-time').textContent = (metrics.time_taken_ms / 1000).toFixed(2);
+            document.getElementById('metric-query').textContent = metrics.expanded_query;
+            toggleBtn.style.display = 'inline-block';
 
-            data.forEach((result, idx) => {
+            results.forEach((result, idx) => {
                 const group = document.createElement('div');
                 group.className = 'result-group';
                 group.style.animationDelay = `${idx * 0.1}s`;

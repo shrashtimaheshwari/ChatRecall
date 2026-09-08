@@ -4,12 +4,11 @@ import json
 import os
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
-import os
-
-load_dotenv()
+import time
+import config
 from groq import Groq
 
-import config
+load_dotenv()
 
 class SearchEngine:
     def __init__(self):
@@ -83,16 +82,18 @@ class SearchEngine:
             print(f"Query expansion failed: {e}")
             return query
 
-    def embed_query(self, query: str) -> list:
+    def embed_query(self, query: str) -> tuple:
         # Step 1: Expand query if enabled
         expanded_query = self.expand_query(query)
         
         # Step 2: Add model-specific prefixes
         if "Qwen3" in config.EMBEDDING_MODEL:
             prefix = "Instruct: Given a search query, retrieve relevant chat messages that answer the query\nQuery: "
-            return self.model.encode(prefix + expanded_query, show_progress_bar=False).tolist()
+            emb = self.model.encode(prefix + expanded_query, show_progress_bar=False).tolist()
         else:
-            return self.model.encode(expanded_query, show_progress_bar=False).tolist()
+            emb = self.model.encode(expanded_query, show_progress_bar=False).tolist()
+            
+        return emb, expanded_query
 
     def search(
         self, 
@@ -103,9 +104,10 @@ class SearchEngine:
         end_date: Optional[str] = None,
         top_k: int = 5,
         context_n: int = 3
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         
-        query_embedding = self.embed_query(query)
+        start_time = time.time()
+        query_embedding, expanded_query = self.embed_query(query)
         where_clause = None
 
         if mode == "attributed" and sender:
@@ -166,7 +168,16 @@ class SearchEngine:
             if len(matches) == top_k:
                 break
             
-        return matches
+        end_time = time.time()
+        time_taken_ms = round((end_time - start_time) * 1000, 2)
+        
+        return {
+            "results": matches,
+            "metrics": {
+                "time_taken_ms": time_taken_ms,
+                "expanded_query": expanded_query
+            }
+        }
 
 # Global instance initialized lazily or explicitly
 _engine = None
