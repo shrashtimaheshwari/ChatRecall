@@ -9,23 +9,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0b1120;
-            --surface-color: rgba(30, 41, 59, 0.7);
-            --surface-border: rgba(255, 255, 255, 0.1);
-            --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-            --primary-color: #60a5fa;
+            --bg-color: #050505;
+            --surface-color: rgba(20, 20, 20, 0.7);
+            --surface-border: rgba(255, 255, 255, 0.08);
+            --primary-gradient: linear-gradient(135deg, #ff007f 0%, #ff7f00 100%);
+            --primary-color: #ff3366;
             --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --bubble-match: rgba(59, 130, 246, 0.15);
-            --bubble-context: rgba(30, 41, 59, 0.8);
+            --text-muted: #888888;
+            --bubble-match: rgba(255, 51, 102, 0.15);
+            --bubble-context: rgba(25, 25, 25, 0.8);
         }
 
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-color);
             background-image: 
-                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
+                radial-gradient(at 0% 0%, rgba(255, 0, 127, 0.12) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(255, 127, 0, 0.12) 0px, transparent 50%);
             background-attachment: fixed;
             color: var(--text-main);
             margin: 0;
@@ -83,7 +83,7 @@
         }
 
         input[type="text"], input[type="datetime-local"], select {
-            background: rgba(15, 23, 42, 0.6);
+            background: rgba(20, 20, 20, 0.8);
             border: 1px solid var(--surface-border);
             color: var(--text-main);
             padding: 0.75rem 1rem;
@@ -95,9 +95,26 @@
             flex-grow: 1;
         }
 
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23888888%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem top 50%;
+            background-size: 0.65rem auto;
+            padding-right: 2.5rem;
+            cursor: pointer;
+        }
+
+        select option {
+            background-color: #111111;
+            color: #f8fafc;
+            padding: 10px;
+        }
+
         input[type="text"]:focus, input[type="datetime-local"]:focus, select:focus {
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+            box-shadow: 0 0 0 2px rgba(255, 51, 102, 0.25);
         }
 
         button {
@@ -182,6 +199,12 @@
             line-height: 1.4;
             display: flex;
             flex-direction: column;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .chat-bubble:hover {
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         .chat-bubble.context {
@@ -192,9 +215,9 @@
 
         .chat-bubble.match {
             background: var(--bubble-match);
-            border: 1px solid rgba(59, 130, 246, 0.4);
+            border: 1px solid rgba(255, 51, 102, 0.4);
             color: var(--text-main);
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.1);
             transform: scale(1.02);
             z-index: 10;
             margin: 0.5rem 0;
@@ -224,14 +247,24 @@
         .loading.show {
             display: block;
         }
+        
+        .results-count {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+            display: none;
+            animation: fadeIn 0.4s ease forwards;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1>Group Chat Search</h1>
-        <p class="subtitle">Semantic vector search powered by MiniLM</p>
+        <h1>ChatRecall</h1>
+        <p class="subtitle">Find what you meant, not just what you typed.</p>
     </header>
 
     <div class="search-box">
@@ -275,6 +308,7 @@
     </div>
 
     <div id="loading" class="loading">Searching knowledge base...</div>
+    <div id="results-count" class="results-count"></div>
     <div id="results"></div>
 </div>
 
@@ -332,7 +366,10 @@
 
         const resultsDiv = document.getElementById('results');
         const loadingDiv = document.getElementById('loading');
+        const resultsCount = document.getElementById('results-count');
+        
         resultsDiv.innerHTML = '';
+        if (resultsCount) resultsCount.style.display = 'none';
         loadingDiv.classList.add('show');
 
         try {
@@ -348,11 +385,16 @@
 
             const data = await res.json();
             loadingDiv.classList.remove('show');
+            const resultsCount = document.getElementById('results-count');
             
             if (data.length === 0) {
+                resultsCount.style.display = 'none';
                 resultsDiv.innerHTML = '<div style="text-align: center; color: var(--text-muted)">No results found.</div>';
                 return;
             }
+
+            resultsCount.textContent = `✨ The ${data.length} most relevant messages found ✨`;
+            resultsCount.style.display = 'block';
 
             data.forEach((result, idx) => {
                 const group = document.createElement('div');
